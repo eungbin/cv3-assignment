@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply m-0 min-w-80 bg-white font-sans text-slate-900 antialiased;
+  }
+
+  button {
+    @apply cursor-pointer;
+  }
+}
