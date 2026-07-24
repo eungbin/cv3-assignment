@@ -3,6 +3,7 @@ import type {
   BroadcastRow,
   BroadcastTable,
   BroadcastType,
+  CategoryMap,
 } from '../types.js'
 
 const MAX_BROADCASTS = 10
@@ -24,6 +25,7 @@ export class BroadcastParseError extends Error {
 export const parseBroadcastTable = (
   html: string,
   type: BroadcastType,
+  categories: CategoryMap = {},
 ): BroadcastTable => {
   const $ = load(html)
   const table = $('table')
@@ -91,12 +93,26 @@ export const parseBroadcastTable = (
         .map((_, time) => normalizeText($(time).text()))
         .get()
         .filter(Boolean)
+      const categoryCell = cells.eq(2)
+      const categoryText = normalizeText(categoryCell.text())
+      const categoryHref = categoryCell.find('a[href]').first().attr('href')
+      const categoryId = categoryHref?.match(
+        /\/report\/category\/(\d+)(?:[/?#]|$)/u,
+      )?.[1]
+      const parentCategoryId = categoryId
+        ? (categories[categoryId]?.pid ?? Number(categoryId))
+        : undefined
+      const category =
+        categoryText ||
+        (parentCategoryId !== undefined
+          ? (categories[String(parentCategoryId)]?.name ?? '')
+          : '')
 
       rows.push({
         rank: normalizeText(cells.eq(0).text()),
         title: normalizeText(informationSpans.eq(0).text()),
         platform: normalizeText(platformElement.text()),
-        category: normalizeText(cells.eq(2).text()),
+        category,
         broadcastTime,
         audience: normalizeText(cells.eq(4).text()),
         sales: normalizeText(cells.eq(5).text()),

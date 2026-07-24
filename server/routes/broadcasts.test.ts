@@ -6,9 +6,15 @@ import type { Server } from 'node:http'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createBroadcastsRouter } from './broadcasts.js'
 import { AssignmentFetchError } from '../services/assignment.js'
-import type { AssignmentHtmlFetcher } from '../services/assignment.js'
+import type {
+  AssignmentHtmlFetcher,
+  CategoryMapFetcher,
+} from '../services/assignment.js'
 
-const buildHtml = (audienceLabel: '조회수' | '시청률') => `
+const buildHtml = (
+  audienceLabel: '조회수' | '시청률',
+  category = '식품',
+) => `
   <table>
     <thead>
       <tr>
@@ -26,7 +32,7 @@ const buildHtml = (audienceLabel: '조회수' | '시청률') => `
       <tr>
         <td>1</td>
         <td><a><span>테스트 방송</span><span>테스트 플랫폼</span></a></td>
-        <td>식품</td>
+        <td>${category}</td>
         <td><span>26.07.24 (금)</span><span>10:00</span></td>
         <td>100</td>
         <td>20</td>
@@ -39,9 +45,16 @@ const buildHtml = (audienceLabel: '조회수' | '시청률') => `
 
 const servers: Server[] = []
 
-const request = async (fetchHtml: AssignmentHtmlFetcher, query = '') => {
+const request = async (
+  fetchHtml: AssignmentHtmlFetcher,
+  query = '',
+  fetchCategories = vi.fn<CategoryMapFetcher>().mockResolvedValue({}),
+) => {
   const app = express()
-  app.use('/api/broadcasts', createBroadcastsRouter(fetchHtml))
+  app.use(
+    '/api/broadcasts',
+    createBroadcastsRouter(fetchHtml, fetchCategories),
+  )
 
   const server = await new Promise<Server>((resolve) => {
     const listeningServer = app.listen(0, '127.0.0.1', () => {
@@ -77,11 +90,13 @@ describe('GET /api/broadcasts', () => {
     const fetchHtml = vi.fn<AssignmentHtmlFetcher>().mockResolvedValue(
       buildHtml('조회수'),
     )
+    const fetchCategories = vi.fn<CategoryMapFetcher>().mockResolvedValue({})
 
-    const response = await request(fetchHtml)
+    const response = await request(fetchHtml, '', fetchCategories)
 
     expect(response.status).toBe(200)
     expect(fetchHtml).toHaveBeenCalledWith('lb')
+    expect(fetchCategories).toHaveBeenCalledOnce()
     await expect(response.json()).resolves.toMatchObject({
       type: 'lb',
       audienceLabel: '조회수',
@@ -92,15 +107,44 @@ describe('GET /api/broadcasts', () => {
     const fetchHtml = vi.fn<AssignmentHtmlFetcher>().mockResolvedValue(
       buildHtml('시청률'),
     )
+    const fetchCategories = vi.fn<CategoryMapFetcher>().mockResolvedValue({})
 
-    const response = await request(fetchHtml, '?type=hs')
+    const response = await request(fetchHtml, '?type=hs', fetchCategories)
 
     expect(response.status).toBe(200)
     expect(fetchHtml).toHaveBeenCalledWith('hs')
+    expect(fetchCategories).not.toHaveBeenCalled()
     await expect(response.json()).resolves.toMatchObject({
       type: 'hs',
       audienceLabel: '시청률',
     })
+  })
+
+  it('라이브 분류 링크를 카테고리 맵으로 변환해 반환한다', async () => {
+    const fetchHtml = vi.fn<AssignmentHtmlFetcher>().mockResolvedValue(
+      buildHtml(
+        '조회수',
+        '<a href="/report/category/50000123"></a>',
+      ),
+    )
+    const fetchCategories = vi.fn<CategoryMapFetcher>().mockResolvedValue({
+      '50000123': {
+        pid: 50000005,
+        name: '외출용품',
+      },
+      '50000005': {
+        pid: null,
+        name: '출산/육아',
+      },
+    })
+
+    const response = await request(fetchHtml, '', fetchCategories)
+    const body = (await response.json()) as {
+      rows: Array<{ category: string }>
+    }
+
+    expect(response.status).toBe(200)
+    expect(body.rows[0]?.category).toBe('출산/육아')
   })
 
   it('잘못된 type이면 원본을 요청하지 않고 400을 반환한다', async () => {
@@ -131,6 +175,19 @@ describe('GET /api/broadcasts', () => {
       .mockResolvedValue('<html></html>')
 
     const response = await request(fetchHtml)
+
+    expect(response.status).toBe(502)
+  })
+
+  it('카테고리 메타데이터 요청 실패 시 502를 반환한다', async () => {
+    const fetchHtml = vi.fn<AssignmentHtmlFetcher>().mockResolvedValue(
+      buildHtml('조회수'),
+    )
+    const fetchCategories = vi
+      .fn<CategoryMapFetcher>()
+      .mockRejectedValue(new AssignmentFetchError('카테고리 요청 실패'))
+
+    const response = await request(fetchHtml, '', fetchCategories)
 
     expect(response.status).toBe(502)
   })

@@ -27,7 +27,7 @@ function BroadcastTable({ table }: BroadcastTableProps) {
             <th className="min-w-60 px-3 py-2.5" scope="col">
               방송정보
             </th>
-            <th className="w-20 px-3 py-2.5" scope="col">
+            <th className="w-28 px-3 py-2.5 whitespace-nowrap" scope="col">
               분류
             </th>
             <th className="w-28 px-3 py-2.5" scope="col">
@@ -64,7 +64,7 @@ function BroadcastTable({ table }: BroadcastTableProps) {
                   {row.platform}
                 </p>
               </td>
-              <td className="px-3 py-2.5 text-xs text-slate-600">
+              <td className="px-3 py-2.5 text-xs whitespace-nowrap text-slate-600">
                 {row.category}
               </td>
               <td className="px-3 py-2.5 text-[11px] leading-4 text-slate-600">

@@ -5,11 +5,13 @@ import {
   BroadcastParseError,
   parseBroadcastTable,
 } from './broadcasts.js'
-import type { BroadcastType } from '../types.js'
+import type { BroadcastType, CategoryMap } from '../types.js'
 
 const buildRow = (type: BroadcastType, rank: number) => {
   const platform = type === 'lb' ? '네이버쇼핑LIVE' : 'NS홈쇼핑'
   const category = type === 'lb' && rank === 1 ? '' : '식품'
+  const categoryHref =
+    type === 'lb' && rank === 1 ? ' href="/report/category/50000123"' : ''
   const title = type === 'lb' ? `라이브 방송 ${rank}` : `홈쇼핑 방송 ${rank}`
   const time = String(rank).padStart(2, '0')
 
@@ -22,7 +24,7 @@ const buildRow = (type: BroadcastType, rank: number) => {
           <span>${platform}<div aria-hidden="true">광고 아이콘</div></span>
         </a>
       </td>
-      <td><div><a>${category}</a></div></td>
+      <td><div><a${categoryHref}>${category}</a></div></td>
       <td><div><span>26.07.24 (금)</span><span>10:${time}</span></div></td>
       <td><span>🔒 로그인</span></td>
       <td><span>🔒 로그인</span></td>
@@ -70,6 +72,17 @@ const buildAssignmentHtml = (
   `
 }
 
+const categories: CategoryMap = {
+  '50000123': {
+    pid: 50000005,
+    name: '외출용품',
+  },
+  '50000005': {
+    pid: null,
+    name: '출산/육아',
+  },
+}
+
 describe('parseBroadcastTable', () => {
   it('관련 없는 테이블을 무시하고 라이브 방송 표시값을 추출한다', () => {
     const result = parseBroadcastTable(buildAssignmentHtml('lb'), 'lb')
@@ -102,6 +115,19 @@ describe('parseBroadcastTable', () => {
         },
       ],
     })
+  })
+
+  it('빈 라이브 분류 링크의 ID를 상위 분류명으로 변환한다', () => {
+    const result = parseBroadcastTable(
+      buildAssignmentHtml('lb', 2),
+      'lb',
+      categories,
+    )
+
+    expect(result.rows.map(({ category }) => category)).toEqual([
+      '출산/육아',
+      '식품',
+    ])
   })
 
   it('홈쇼핑 테이블의 시청률 헤더와 방송정보를 추출한다', () => {

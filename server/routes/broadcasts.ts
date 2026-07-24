@@ -3,7 +3,9 @@ import { BroadcastParseError, parseBroadcastTable } from '../parsers/broadcasts.
 import {
   AssignmentFetchError,
   fetchAssignmentHtml,
+  fetchCategoryMap,
   type AssignmentHtmlFetcher,
+  type CategoryMapFetcher,
 } from '../services/assignment.js'
 import type { BroadcastType } from '../types.js'
 
@@ -12,6 +14,7 @@ const isBroadcastType = (value: unknown): value is BroadcastType =>
 
 export const createBroadcastsRouter = (
   fetchHtml: AssignmentHtmlFetcher = fetchAssignmentHtml,
+  fetchCategories: CategoryMapFetcher = fetchCategoryMap,
 ) => {
   const router = Router()
 
@@ -26,8 +29,11 @@ export const createBroadcastsRouter = (
     const type: BroadcastType = requestedType ?? 'lb'
 
     try {
-      const html = await fetchHtml(type)
-      response.json(parseBroadcastTable(html, type))
+      const [html, categories] = await Promise.all([
+        fetchHtml(type),
+        type === 'lb' ? fetchCategories() : Promise.resolve({}),
+      ])
+      response.json(parseBroadcastTable(html, type, categories))
     } catch (error) {
       if (
         error instanceof AssignmentFetchError ||
