@@ -25,4 +25,5 @@ coverage
 *.sln
 *.sw?
 
-PROJECT_PLAN.md
+./PROJECT_PLAN.md
+docs/

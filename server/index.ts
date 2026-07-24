@@ -2,6 +2,7 @@ import express from 'express'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createBroadcastsRouter } from './routes/broadcasts.js'
 
 const app = express()
 const port = Number(process.env.PORT) || 3001
@@ -12,6 +13,8 @@ app.use(express.json())
 app.get('/api/health', (_request, response) => {
   response.json({ status: 'ok' })
 })
+
+app.use('/api/broadcasts', createBroadcastsRouter())
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url))
 const clientDistPath = path.resolve(currentDirectory, '../dist')
@@ -27,6 +30,19 @@ if (existsSync(clientDistPath)) {
     response.sendFile(path.join(clientDistPath, 'index.html'))
   })
 }
+
+app.use(
+  (
+    error: unknown,
+    _request: express.Request,
+    response: express.Response,
+    next: express.NextFunction,
+  ) => {
+    void next
+    console.error(error)
+    response.status(500).json({ error: '서버 내부 오류가 발생했습니다.' })
+  },
+)
 
 app.listen(port, () => {
   console.log(`API server is running at http://localhost:${port}`)
