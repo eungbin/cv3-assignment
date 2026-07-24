@@ -1,5 +1,12 @@
 export type BroadcastType = 'lb' | 'hs'
 
+export interface CategoryMetadata {
+  pid: number | null
+  name: string
+}
+
+export type CategoryMap = Record<string, CategoryMetadata>
+
 export interface BroadcastRow {
   rank: string
   title: string
