@@ -24,7 +24,11 @@
 
 ## 실행 방법
 
+저장소를 복제한 뒤 프로젝트 디렉터리에서 의존성을 설치하고 개발 서버를 실행합니다.
+
 ```bash
+git clone https://github.com/eungbin/cv3-assignment.git
+cd cv3-assignment
 npm ci
 npm run dev
 ```
